@@ -18,14 +18,11 @@
 
 using wrapperType = cURLWrapper;
 
-void UNIXSocketRequest::download(RequestParameters requestParameters,
-                                 PostRequestParameters postRequestParameters = {},
-                                 ConfigurationParameters configurationParameters = {})
+void UNIXSocketRequest::download(
+    std::variant<TRequestParameters<std::string>, TRequestParameters<nlohmann::json>> requestParameters,
+    PostRequestParameters postRequestParameters = {},
+    ConfigurationParameters configurationParameters = {})
 {
-    // Request parameters
-    const auto& url {requestParameters.url};
-    const auto& secureCommunication {requestParameters.secureCommunication};
-    const auto& httpHeaders {requestParameters.httpHeaders};
     // Post request parameters
     const auto& onError {postRequestParameters.onError};
     const auto& onSuccess {postRequestParameters.onSuccess};
@@ -38,13 +35,18 @@ void UNIXSocketRequest::download(RequestParameters requestParameters,
 
     try
     {
-        GetRequest::builder(FactoryRequestWrapper<wrapperType>::create(handlerType, shouldRun))
-            .url(url.url(), secureCommunication)
-            .unixSocketPath(url.unixSocketPath())
-            .timeout(timeout)
-            .userAgent(userAgent)
-            .outputFile(outputFile)
-            .execute();
+        std::visit(
+            [&](auto&& arg)
+            {
+                GetRequest::builder(FactoryRequestWrapper<wrapperType>::create(handlerType, shouldRun))
+                    .url(arg.url.url(), arg.secureCommunication)
+                    .unixSocketPath(arg.url.unixSocketPath())
+                    .timeout(timeout)
+                    .userAgent(userAgent)
+                    .outputFile(outputFile)
+                    .execute();
+            },
+            requestParameters);
     }
     catch (const Curl::CurlException& ex)
     {
@@ -70,14 +72,11 @@ void UNIXSocketRequest::download(RequestParameters requestParameters,
     }
 }
 
-void UNIXSocketRequest::post(RequestParameters requestParameters,
-                             PostRequestParameters postRequestParameters = {},
-                             ConfigurationParameters configurationParameters = {})
+void UNIXSocketRequest::post(
+    std::variant<TRequestParameters<std::string>, TRequestParameters<nlohmann::json>> requestParameters,
+    PostRequestParameters postRequestParameters = {},
+    ConfigurationParameters configurationParameters = {})
 {
-    // Request parameters
-    const auto& url {requestParameters.url};
-    const auto& secureCommunication {requestParameters.secureCommunication};
-    const auto& httpHeaders {requestParameters.httpHeaders};
     // Post request parameters
     const auto& onError {postRequestParameters.onError};
     const auto& onSuccess {postRequestParameters.onSuccess};
@@ -90,20 +89,43 @@ void UNIXSocketRequest::post(RequestParameters requestParameters,
 
     try
     {
-        const std::string data = std::holds_alternative<std::string>(requestParameters.data)
-                                     ? std::get<std::string>(requestParameters.data)
-                                     : std::get<nlohmann::json>(requestParameters.data).dump();
+        std::visit(
+            [&](auto&& arg)
+            {
+                using T = std::decay_t<decltype(arg)>;
+                if constexpr (std::is_same_v<T, TRequestParameters<std::string>>)
+                {
+                    auto req {PostRequest::builder(FactoryRequestWrapper<wrapperType>::create(handlerType, shouldRun))};
+                    req.url(arg.url.url(), arg.secureCommunication)
+                        .unixSocketPath(arg.url.unixSocketPath())
+                        .timeout(timeout)
+                        .userAgent(userAgent)
+                        .postData(arg.data)
+                        .outputFile(outputFile)
+                        .execute();
 
-        auto req {PostRequest::builder(FactoryRequestWrapper<wrapperType>::create(handlerType, shouldRun))};
-        req.url(url.url(), secureCommunication)
-            .unixSocketPath(url.unixSocketPath())
-            .timeout(timeout)
-            .userAgent(userAgent)
-            .postData(data)
-            .outputFile(outputFile)
-            .execute();
+                    onSuccess(req.response());
+                }
+                else if constexpr (std::is_same_v<T, TRequestParameters<nlohmann::json>>)
+                {
+                    const auto data = arg.data.dump();
+                    auto req {PostRequest::builder(FactoryRequestWrapper<wrapperType>::create(handlerType, shouldRun))};
+                    req.url(arg.url.url(), arg.secureCommunication)
+                        .unixSocketPath(arg.url.unixSocketPath())
+                        .timeout(timeout)
+                        .userAgent(userAgent)
+                        .postData(data)
+                        .outputFile(outputFile)
+                        .execute();
 
-        onSuccess(req.response());
+                    onSuccess(req.response());
+                }
+                else
+                {
+                    throw std::runtime_error("Invalid type");
+                }
+            },
+            requestParameters);
     }
     catch (const Curl::CurlException& ex)
     {
@@ -129,14 +151,11 @@ void UNIXSocketRequest::post(RequestParameters requestParameters,
     }
 }
 
-void UNIXSocketRequest::get(RequestParameters requestParameters,
-                            PostRequestParameters postRequestParameters = {},
-                            ConfigurationParameters configurationParameters = {})
+void UNIXSocketRequest::get(
+    std::variant<TRequestParameters<std::string>, TRequestParameters<nlohmann::json>> requestParameters,
+    PostRequestParameters postRequestParameters = {},
+    ConfigurationParameters configurationParameters = {})
 {
-    // Request parameters
-    const auto& url {requestParameters.url};
-    const auto& secureCommunication {requestParameters.secureCommunication};
-    const auto& httpHeaders {requestParameters.httpHeaders};
     // Post request parameters
     const auto& onError {postRequestParameters.onError};
     const auto& onSuccess {postRequestParameters.onSuccess};
@@ -149,15 +168,20 @@ void UNIXSocketRequest::get(RequestParameters requestParameters,
 
     try
     {
-        auto req {GetRequest::builder(FactoryRequestWrapper<wrapperType>::create(handlerType, shouldRun))};
-        req.url(url.url(), secureCommunication)
-            .unixSocketPath(url.unixSocketPath())
-            .timeout(timeout)
-            .userAgent(userAgent)
-            .outputFile(outputFile)
-            .execute();
+        std::visit(
+            [&](auto&& arg)
+            {
+                auto req {GetRequest::builder(FactoryRequestWrapper<wrapperType>::create(handlerType, shouldRun))};
+                req.url(arg.url.url(), arg.secureCommunication)
+                    .unixSocketPath(arg.url.unixSocketPath())
+                    .timeout(timeout)
+                    .userAgent(userAgent)
+                    .outputFile(outputFile)
+                    .execute();
 
-        onSuccess(req.response());
+                onSuccess(req.response());
+            },
+            requestParameters);
     }
     catch (const Curl::CurlException& ex)
     {
@@ -183,14 +207,11 @@ void UNIXSocketRequest::get(RequestParameters requestParameters,
     }
 }
 
-void UNIXSocketRequest::put(RequestParameters requestParameters,
-                            PostRequestParameters postRequestParameters = {},
-                            ConfigurationParameters configurationParameters = {})
+void UNIXSocketRequest::put(
+    std::variant<TRequestParameters<std::string>, TRequestParameters<nlohmann::json>> requestParameters,
+    PostRequestParameters postRequestParameters = {},
+    ConfigurationParameters configurationParameters = {})
 {
-    // Request parameters
-    const auto& url {requestParameters.url};
-    const auto& secureCommunication {requestParameters.secureCommunication};
-    const auto& httpHeaders {requestParameters.httpHeaders};
     // Post request parameters
     const auto& onError {postRequestParameters.onError};
     const auto& onSuccess {postRequestParameters.onSuccess};
@@ -203,20 +224,43 @@ void UNIXSocketRequest::put(RequestParameters requestParameters,
 
     try
     {
-        const std::string data = std::holds_alternative<std::string>(requestParameters.data)
-                                     ? std::get<std::string>(requestParameters.data)
-                                     : std::get<nlohmann::json>(requestParameters.data).dump();
+        std::visit(
+            [&](auto&& arg)
+            {
+                using T = std::decay_t<decltype(arg)>;
+                if constexpr (std::is_same_v<T, TRequestParameters<std::string>>)
+                {
+                    auto req {PutRequest::builder(FactoryRequestWrapper<wrapperType>::create(handlerType, shouldRun))};
+                    req.url(arg.url.url(), arg.secureCommunication)
+                        .unixSocketPath(arg.url.unixSocketPath())
+                        .timeout(timeout)
+                        .userAgent(userAgent)
+                        .postData(arg.data)
+                        .outputFile(outputFile)
+                        .execute();
 
-        auto req {PutRequest::builder(FactoryRequestWrapper<wrapperType>::create(handlerType, shouldRun))};
-        req.url(url.url(), secureCommunication)
-            .unixSocketPath(url.unixSocketPath())
-            .timeout(timeout)
-            .userAgent(userAgent)
-            .postData(data)
-            .outputFile(outputFile)
-            .execute();
+                    onSuccess(req.response());
+                }
+                else if constexpr (std::is_same_v<T, TRequestParameters<nlohmann::json>>)
+                {
+                    const auto data = arg.data.dump();
+                    auto req {PutRequest::builder(FactoryRequestWrapper<wrapperType>::create(handlerType, shouldRun))};
+                    req.url(arg.url.url(), arg.secureCommunication)
+                        .postData(data)
+                        .appendHeaders(arg.httpHeaders)
+                        .timeout(timeout)
+                        .userAgent(userAgent)
+                        .outputFile(outputFile)
+                        .execute();
 
-        onSuccess(req.response());
+                    onSuccess(req.response());
+                }
+                else
+                {
+                    throw std::runtime_error("Invalid type");
+                }
+            },
+            requestParameters);
     }
     catch (const Curl::CurlException& ex)
     {
@@ -242,14 +286,11 @@ void UNIXSocketRequest::put(RequestParameters requestParameters,
     }
 }
 
-void UNIXSocketRequest::patch(RequestParameters requestParameters,
-                              PostRequestParameters postRequestParameters = {},
-                              ConfigurationParameters configurationParameters = {})
+void UNIXSocketRequest::patch(
+    std::variant<TRequestParameters<std::string>, TRequestParameters<nlohmann::json>> requestParameters,
+    PostRequestParameters postRequestParameters = {},
+    ConfigurationParameters configurationParameters = {})
 {
-    // Request parameters
-    const auto& url {requestParameters.url};
-    const auto& secureCommunication {requestParameters.secureCommunication};
-    const auto& httpHeaders {requestParameters.httpHeaders};
     // Post request parameters
     const auto& onError {postRequestParameters.onError};
     const auto& onSuccess {postRequestParameters.onSuccess};
@@ -262,20 +303,45 @@ void UNIXSocketRequest::patch(RequestParameters requestParameters,
 
     try
     {
-        const std::string data = std::holds_alternative<std::string>(requestParameters.data)
-                                     ? std::get<std::string>(requestParameters.data)
-                                     : std::get<nlohmann::json>(requestParameters.data).dump();
+        std::visit(
+            [&](auto&& arg)
+            {
+                using T = std::decay_t<decltype(arg)>;
+                if constexpr (std::is_same_v<T, TRequestParameters<std::string>>)
+                {
+                    auto req {
+                        PatchRequest::builder(FactoryRequestWrapper<wrapperType>::create(handlerType, shouldRun))};
+                    req.url(arg.url.url(), arg.secureCommunication)
+                        .unixSocketPath(arg.url.unixSocketPath())
+                        .timeout(timeout)
+                        .userAgent(userAgent)
+                        .postData(arg.data)
+                        .outputFile(outputFile)
+                        .execute();
 
-        auto req {PatchRequest::builder(FactoryRequestWrapper<wrapperType>::create(handlerType, shouldRun))};
-        req.url(url.url(), secureCommunication)
-            .unixSocketPath(url.unixSocketPath())
-            .timeout(timeout)
-            .userAgent(userAgent)
-            .postData(data)
-            .outputFile(outputFile)
-            .execute();
+                    onSuccess(req.response());
+                }
+                else if constexpr (std::is_same_v<T, TRequestParameters<nlohmann::json>>)
+                {
+                    const auto data = arg.data.dump();
+                    auto req {
+                        PatchRequest::builder(FactoryRequestWrapper<wrapperType>::create(handlerType, shouldRun))};
+                    req.url(arg.url.url(), arg.secureCommunication)
+                        .unixSocketPath(arg.url.unixSocketPath())
+                        .timeout(timeout)
+                        .userAgent(userAgent)
+                        .postData(data)
+                        .outputFile(outputFile)
+                        .execute();
 
-        onSuccess(req.response());
+                    onSuccess(req.response());
+                }
+                else
+                {
+                    throw std::runtime_error("Invalid type");
+                }
+            },
+            requestParameters);
     }
     catch (const Curl::CurlException& ex)
     {
@@ -301,14 +367,11 @@ void UNIXSocketRequest::patch(RequestParameters requestParameters,
     }
 }
 
-void UNIXSocketRequest::delete_(RequestParameters requestParameters,
-                                PostRequestParameters postRequestParameters = {},
-                                ConfigurationParameters configurationParameters = {})
+void UNIXSocketRequest::delete_(
+    std::variant<TRequestParameters<std::string>, TRequestParameters<nlohmann::json>> requestParameters,
+    PostRequestParameters postRequestParameters = {},
+    ConfigurationParameters configurationParameters = {})
 {
-    // Request parameters
-    const auto& url {requestParameters.url};
-    const auto& secureCommunication {requestParameters.secureCommunication};
-    const auto& httpHeaders {requestParameters.httpHeaders};
     // Post request parameters
     const auto& onError {postRequestParameters.onError};
     const auto& onSuccess {postRequestParameters.onSuccess};
@@ -321,15 +384,43 @@ void UNIXSocketRequest::delete_(RequestParameters requestParameters,
 
     try
     {
-        auto req {DeleteRequest::builder(FactoryRequestWrapper<wrapperType>::create(handlerType, shouldRun))};
-        req.url(url.url(), secureCommunication)
-            .unixSocketPath(url.unixSocketPath())
-            .timeout(timeout)
-            .userAgent(userAgent)
-            .outputFile(outputFile)
-            .execute();
+        std::visit(
+            [&](auto&& arg)
+            {
+                using T = std::decay_t<decltype(arg)>;
+                if constexpr (std::is_same_v<T, TRequestParameters<std::string>>)
+                {
+                    auto req {
+                        DeleteRequest::builder(FactoryRequestWrapper<wrapperType>::create(handlerType, shouldRun))};
+                    req.url(arg.url.url(), arg.secureCommunication)
+                        .unixSocketPath(arg.url.unixSocketPath())
+                        .timeout(timeout)
+                        .userAgent(userAgent)
+                        .outputFile(outputFile)
+                        .execute();
 
-        onSuccess(req.response());
+                    onSuccess(req.response());
+                }
+                else if constexpr (std::is_same_v<T, TRequestParameters<nlohmann::json>>)
+                {
+                    const auto data = arg.data.dump();
+                    auto req {
+                        DeleteRequest::builder(FactoryRequestWrapper<wrapperType>::create(handlerType, shouldRun))};
+                    req.url(arg.url.url(), arg.secureCommunication)
+                        .unixSocketPath(arg.url.unixSocketPath())
+                        .timeout(timeout)
+                        .userAgent(userAgent)
+                        .outputFile(outputFile)
+                        .execute();
+
+                    onSuccess(req.response());
+                }
+                else
+                {
+                    throw std::runtime_error("Invalid type");
+                }
+            },
+            requestParameters);
     }
     catch (const Curl::CurlException& ex)
     {

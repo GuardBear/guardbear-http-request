@@ -37,7 +37,7 @@ public:
      * @param postRequestParameters Parameters that define the behavior after the request is made.
      * @param configurationParameters Parameters to configure the behavior of the request.
      */
-    void download(RequestParameters requestParameters,
+    void download(std::variant<TRequestParameters<std::string>,TRequestParameters<nlohmann::json>> requestParameters,
                   PostRequestParameters postRequestParameters,
                   ConfigurationParameters configurationParameters);
     /**
@@ -47,7 +47,7 @@ public:
      * @param postRequestParameters Parameters that define the behavior after the request is made.
      * @param configurationParameters Parameters to configure the behavior of the request.
      */
-    void post(RequestParameters requestParameters,
+    void post(std::variant<TRequestParameters<std::string>,TRequestParameters<nlohmann::json>> requestParameters,
               PostRequestParameters postRequestParameters,
               ConfigurationParameters configurationParameters);
 
@@ -58,7 +58,7 @@ public:
      * @param postRequestParameters Parameters that define the behavior after the request is made.
      * @param configurationParameters Parameters to configure the behavior of the request.
      */
-    void get(RequestParameters requestParameters,
+    void get(std::variant<TRequestParameters<std::string>,TRequestParameters<nlohmann::json>> requestParameters,
              PostRequestParameters postRequestParameters,
              ConfigurationParameters configurationParameters);
     /**
@@ -68,7 +68,7 @@ public:
      * @param postRequestParameters Parameters that define the behavior after the request is made.
      * @param configurationParameters Parameters to configure the behavior of the request.
      */
-    void put(RequestParameters requestParameters,
+    void put(std::variant<TRequestParameters<std::string>,TRequestParameters<nlohmann::json>> requestParameters,
              PostRequestParameters postRequestParameters,
              ConfigurationParameters configurationParameters);
 
@@ -79,7 +79,7 @@ public:
      * @param postRequestParameters Parameters that define the behavior after the request is made.
      * @param configurationParameters Parameters to configure the behavior of the request..
      */
-    void patch(RequestParameters requestParameters,
+    void patch(std::variant<TRequestParameters<std::string>,TRequestParameters<nlohmann::json>> requestParameters,
                PostRequestParameters postRequestParameters,
                ConfigurationParameters configurationParameters);
 
@@ -90,7 +90,7 @@ public:
      * @param postRequestParameters Parameters that define the behavior after the request is made.
      * @param configurationParameters Parameters to configure the behavior of the request.
      */
-    void delete_(RequestParameters requestParameters,
+    void delete_(std::variant<TRequestParameters<std::string>,TRequestParameters<nlohmann::json>> requestParameters,
                  PostRequestParameters postRequestParameters,
                  ConfigurationParameters configurationParameters);
 };

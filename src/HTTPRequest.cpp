@@ -17,17 +17,15 @@
 #include <atomic>
 #include <string>
 #include <unordered_set>
+#include <variant>
 
 using wrapperType = cURLWrapper;
 
-void HTTPRequest::download(RequestParameters requestParameters,
-                           PostRequestParameters postRequestParameters,
-                           ConfigurationParameters configurationParameters)
+void HTTPRequest::download(
+    std::variant<TRequestParameters<std::string>, TRequestParameters<nlohmann::json>> requestParameters,
+    PostRequestParameters postRequestParameters,
+    ConfigurationParameters configurationParameters)
 {
-    // Request parameters
-    const auto& url {requestParameters.url};
-    const auto& secureCommunication {requestParameters.secureCommunication};
-    const auto& httpHeaders {requestParameters.httpHeaders};
     // Post request parameters
     const auto& onError {postRequestParameters.onError};
     const auto& outputFile {postRequestParameters.outputFile};
@@ -39,13 +37,18 @@ void HTTPRequest::download(RequestParameters requestParameters,
 
     try
     {
-        GetRequest::builder(FactoryRequestWrapper<wrapperType>::create(handlerType, shouldRun))
-            .url(url.url(), secureCommunication)
-            .outputFile(outputFile)
-            .appendHeaders(httpHeaders)
-            .timeout(timeout)
-            .userAgent(userAgent)
-            .execute();
+        std::visit(
+            [&](auto&& arg)
+            {
+                GetRequest::builder(FactoryRequestWrapper<wrapperType>::create(handlerType, shouldRun))
+                    .url(arg.url.url(), arg.secureCommunication)
+                    .outputFile(outputFile)
+                    .appendHeaders(arg.httpHeaders)
+                    .timeout(timeout)
+                    .userAgent(userAgent)
+                    .execute();
+            },
+            requestParameters);
     }
     catch (const Curl::CurlException& ex)
     {
@@ -71,14 +74,11 @@ void HTTPRequest::download(RequestParameters requestParameters,
     }
 }
 
-void HTTPRequest::post(RequestParameters requestParameters,
-                       PostRequestParameters postRequestParameters,
-                       ConfigurationParameters configurationParameters)
+void HTTPRequest::post(
+    std::variant<TRequestParameters<std::string>, TRequestParameters<nlohmann::json>> requestParameters,
+    PostRequestParameters postRequestParameters,
+    ConfigurationParameters configurationParameters)
 {
-    // Request parameters
-    const auto& url {requestParameters.url};
-    const auto& secureCommunication {requestParameters.secureCommunication};
-    const auto& httpHeaders {requestParameters.httpHeaders};
     // Post request parameters
     const auto& onError {postRequestParameters.onError};
     const auto& onSuccess {postRequestParameters.onSuccess};
@@ -91,20 +91,43 @@ void HTTPRequest::post(RequestParameters requestParameters,
 
     try
     {
-        const std::string data = std::holds_alternative<std::string>(requestParameters.data)
-                                     ? std::get<std::string>(requestParameters.data)
-                                     : std::get<nlohmann::json>(requestParameters.data).dump();
+        std::visit(
+            [&](auto&& arg)
+            {
+                using T = std::decay_t<decltype(arg)>;
+                if constexpr (std::is_same_v<T, TRequestParameters<std::string>>)
+                {
+                    auto req {PostRequest::builder(FactoryRequestWrapper<wrapperType>::create(handlerType, shouldRun))};
+                    req.url(arg.url.url(), arg.secureCommunication)
+                        .postData(arg.data)
+                        .appendHeaders(arg.httpHeaders)
+                        .timeout(timeout)
+                        .userAgent(userAgent)
+                        .outputFile(outputFile)
+                        .execute();
 
-        auto req {PostRequest::builder(FactoryRequestWrapper<wrapperType>::create(handlerType, shouldRun))};
-        req.url(url.url(), secureCommunication)
-            .postData(data)
-            .appendHeaders(httpHeaders)
-            .timeout(timeout)
-            .userAgent(userAgent)
-            .outputFile(outputFile)
-            .execute();
+                    onSuccess(req.response());
+                }
+                else if constexpr (std::is_same_v<T, TRequestParameters<nlohmann::json>>)
+                {
+                    const std::string data = arg.data.dump();
+                    auto req {PostRequest::builder(FactoryRequestWrapper<wrapperType>::create(handlerType, shouldRun))};
+                    req.url(arg.url.url(), arg.secureCommunication)
+                        .postData(data)
+                        .appendHeaders(arg.httpHeaders)
+                        .timeout(timeout)
+                        .userAgent(userAgent)
+                        .outputFile(outputFile)
+                        .execute();
 
-        onSuccess(req.response());
+                    onSuccess(req.response());
+                }
+                else
+                {
+                    throw std::runtime_error("Invalid type");
+                }
+            },
+            requestParameters);
     }
     catch (const Curl::CurlException& ex)
     {
@@ -130,14 +153,11 @@ void HTTPRequest::post(RequestParameters requestParameters,
     }
 }
 
-void HTTPRequest::get(RequestParameters requestParameters,
-                      PostRequestParameters postRequestParameters,
-                      ConfigurationParameters configurationParameters)
+void HTTPRequest::get(
+    std::variant<TRequestParameters<std::string>, TRequestParameters<nlohmann::json>> requestParameters,
+    PostRequestParameters postRequestParameters,
+    ConfigurationParameters configurationParameters)
 {
-    // Request parameters
-    const auto& url {requestParameters.url};
-    const auto& secureCommunication {requestParameters.secureCommunication};
-    const auto& httpHeaders {requestParameters.httpHeaders};
     // Post request parameters
     const auto& onError {postRequestParameters.onError};
     const auto& onSuccess {postRequestParameters.onSuccess};
@@ -150,15 +170,19 @@ void HTTPRequest::get(RequestParameters requestParameters,
 
     try
     {
-        auto req {GetRequest::builder(FactoryRequestWrapper<wrapperType>::create(handlerType, shouldRun))};
-        req.url(url.url(), secureCommunication)
-            .appendHeaders(httpHeaders)
-            .timeout(timeout)
-            .userAgent(userAgent)
-            .outputFile(outputFile)
-            .execute();
-
-        onSuccess(req.response());
+        std::visit(
+            [&](auto&& arg)
+            {
+                auto req {GetRequest::builder(FactoryRequestWrapper<wrapperType>::create(handlerType, shouldRun))};
+                req.url(arg.url.url(), arg.secureCommunication)
+                    .appendHeaders(arg.httpHeaders)
+                    .timeout(timeout)
+                    .userAgent(userAgent)
+                    .outputFile(outputFile)
+                    .execute();
+                onSuccess(req.response());
+            },
+            requestParameters);
     }
     catch (const Curl::CurlException& ex)
     {
@@ -184,14 +208,11 @@ void HTTPRequest::get(RequestParameters requestParameters,
     }
 }
 
-void HTTPRequest::put(RequestParameters requestParameters,
-                      PostRequestParameters postRequestParameters,
-                      ConfigurationParameters configurationParameters)
+void HTTPRequest::put(
+    std::variant<TRequestParameters<std::string>, TRequestParameters<nlohmann::json>> requestParameters,
+    PostRequestParameters postRequestParameters,
+    ConfigurationParameters configurationParameters)
 {
-    // Request parameters
-    const auto& url {requestParameters.url};
-    const auto& secureCommunication {requestParameters.secureCommunication};
-    const auto& httpHeaders {requestParameters.httpHeaders};
     // Post request parameters
     const auto& onError {postRequestParameters.onError};
     const auto& onSuccess {postRequestParameters.onSuccess};
@@ -204,20 +225,43 @@ void HTTPRequest::put(RequestParameters requestParameters,
 
     try
     {
-        const std::string data = std::holds_alternative<std::string>(requestParameters.data)
-                                     ? std::get<std::string>(requestParameters.data)
-                                     : std::get<nlohmann::json>(requestParameters.data).dump();
+        std::visit(
+            [&](auto&& arg)
+            {
+                using T = std::decay_t<decltype(arg)>;
+                if constexpr (std::is_same_v<T, TRequestParameters<std::string>>)
+                {
+                    auto req {PutRequest::builder(FactoryRequestWrapper<wrapperType>::create(handlerType, shouldRun))};
+                    req.url(arg.url.url(), arg.secureCommunication)
+                        .postData(arg.data)
+                        .appendHeaders(arg.httpHeaders)
+                        .timeout(timeout)
+                        .userAgent(userAgent)
+                        .outputFile(outputFile)
+                        .execute();
 
-        auto req {PutRequest::builder(FactoryRequestWrapper<wrapperType>::create(handlerType, shouldRun))};
-        req.url(url.url(), secureCommunication)
-            .postData(data)
-            .appendHeaders(httpHeaders)
-            .timeout(timeout)
-            .userAgent(userAgent)
-            .outputFile(outputFile)
-            .execute();
+                    onSuccess(req.response());
+                }
+                else if constexpr (std::is_same_v<T, TRequestParameters<nlohmann::json>>)
+                {
+                    const std::string data = arg.data.dump();
+                    auto req {PutRequest::builder(FactoryRequestWrapper<wrapperType>::create(handlerType, shouldRun))};
+                    req.url(arg.url.url(), arg.secureCommunication)
+                        .postData(data)
+                        .appendHeaders(arg.httpHeaders)
+                        .timeout(timeout)
+                        .userAgent(userAgent)
+                        .outputFile(outputFile)
+                        .execute();
 
-        onSuccess(req.response());
+                    onSuccess(req.response());
+                }
+                else
+                {
+                    throw std::runtime_error("Invalid type");
+                }
+            },
+            requestParameters);
     }
     catch (const Curl::CurlException& ex)
     {
@@ -243,14 +287,11 @@ void HTTPRequest::put(RequestParameters requestParameters,
     }
 }
 
-void HTTPRequest::patch(RequestParameters requestParameters,
-                        PostRequestParameters postRequestParameters,
-                        ConfigurationParameters configurationParameters)
+void HTTPRequest::patch(
+    std::variant<TRequestParameters<std::string>, TRequestParameters<nlohmann::json>> requestParameters,
+    PostRequestParameters postRequestParameters,
+    ConfigurationParameters configurationParameters)
 {
-    // Request parameters
-    const auto& url {requestParameters.url};
-    const auto& secureCommunication {requestParameters.secureCommunication};
-    const auto& httpHeaders {requestParameters.httpHeaders};
     // Post request parameters
     const auto& onError {postRequestParameters.onError};
     const auto& onSuccess {postRequestParameters.onSuccess};
@@ -263,20 +304,46 @@ void HTTPRequest::patch(RequestParameters requestParameters,
 
     try
     {
-        const std::string data = std::holds_alternative<std::string>(requestParameters.data)
-                                     ? std::get<std::string>(requestParameters.data)
-                                     : std::get<nlohmann::json>(requestParameters.data).dump();
+        std::visit(
+            [&](auto&& arg)
+            {
+                using T = std::decay_t<decltype(arg)>;
+                if constexpr (std::is_same_v<T, TRequestParameters<std::string>>)
+                {
 
-        auto req {PatchRequest::builder(FactoryRequestWrapper<wrapperType>::create(handlerType, shouldRun))};
-        req.url(url.url(), secureCommunication)
-            .postData(data)
-            .appendHeaders(httpHeaders)
-            .timeout(timeout)
-            .userAgent(userAgent)
-            .outputFile(outputFile)
-            .execute();
+                    auto req {
+                        PatchRequest::builder(FactoryRequestWrapper<wrapperType>::create(handlerType, shouldRun))};
+                    req.url(arg.url.url(), arg.secureCommunication)
+                        .postData(arg.data)
+                        .appendHeaders(arg.httpHeaders)
+                        .timeout(timeout)
+                        .userAgent(userAgent)
+                        .outputFile(outputFile)
+                        .execute();
 
-        onSuccess(req.response());
+                    onSuccess(req.response());
+                }
+                else if constexpr (std::is_same_v<T, TRequestParameters<nlohmann::json>>)
+                {
+                    const std::string data = arg.data.dump();
+                    auto req {
+                        PatchRequest::builder(FactoryRequestWrapper<wrapperType>::create(handlerType, shouldRun))};
+                    req.url(arg.url.url(), arg.secureCommunication)
+                        .postData(data)
+                        .appendHeaders(arg.httpHeaders)
+                        .timeout(timeout)
+                        .userAgent(userAgent)
+                        .outputFile(outputFile)
+                        .execute();
+
+                    onSuccess(req.response());
+                }
+                else
+                {
+                    throw std::runtime_error("Invalid type");
+                }
+            },
+            requestParameters);
     }
     catch (const Curl::CurlException& ex)
     {
@@ -302,14 +369,11 @@ void HTTPRequest::patch(RequestParameters requestParameters,
     }
 }
 
-void HTTPRequest::delete_(RequestParameters requestParameters,
-                          PostRequestParameters postRequestParameters,
-                          ConfigurationParameters configurationParameters)
+void HTTPRequest::delete_(
+    std::variant<TRequestParameters<std::string>, TRequestParameters<nlohmann::json>> requestParameters,
+    PostRequestParameters postRequestParameters,
+    ConfigurationParameters configurationParameters)
 {
-    // Request parameters
-    const auto& url {requestParameters.url};
-    const auto& secureCommunication {requestParameters.secureCommunication};
-    const auto& httpHeaders {requestParameters.httpHeaders};
     // Post request parameters
     const auto& onError {postRequestParameters.onError};
     const auto& onSuccess {postRequestParameters.onSuccess};
@@ -322,15 +386,20 @@ void HTTPRequest::delete_(RequestParameters requestParameters,
 
     try
     {
-        auto req {DeleteRequest::builder(FactoryRequestWrapper<wrapperType>::create(handlerType, shouldRun))};
-        req.url(url.url(), secureCommunication)
-            .appendHeaders(httpHeaders)
-            .timeout(timeout)
-            .userAgent(userAgent)
-            .outputFile(outputFile)
-            .execute();
+        std::visit(
+            [&](auto&& arg)
+            {
+                auto req {DeleteRequest::builder(FactoryRequestWrapper<wrapperType>::create(handlerType, shouldRun))};
+                req.url(arg.url.url(), arg.secureCommunication)
+                    .appendHeaders(arg.httpHeaders)
+                    .timeout(timeout)
+                    .userAgent(userAgent)
+                    .outputFile(outputFile)
+                    .execute();
 
-        onSuccess(req.response());
+                onSuccess(req.response());
+            },
+            requestParameters);
     }
     catch (const Curl::CurlException& ex)
     {

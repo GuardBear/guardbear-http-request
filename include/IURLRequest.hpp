@@ -128,8 +128,8 @@ public:
  * @brief The structure groups all the parameters required for the request, like the URL, the data to be sent, the
  * headers, etc. They can be thought of as "what" to do.
  */
-
-struct RequestParameters
+template<typename T = std::string>
+struct TRequestParameters
 {
     /**
      * @brief URL to send the request.
@@ -141,7 +141,7 @@ struct RequestParameters
      * @brief Data to send (string or nlohmann::json).
      *
      */
-    const std::variant<std::string, nlohmann::json> data = {};
+    const T& data = {};
 
     /**
      * @brief Secure communication object.
@@ -156,6 +156,8 @@ struct RequestParameters
     const std::unordered_set<std::string>& httpHeaders = DEFAULT_HEADERS;
 };
 
+using RequestParameters = TRequestParameters<>;
+using RequestParametersJson = TRequestParameters<nlohmann::json>;
 /**
  * @struct ConfigurationParameters
  * @brief The structure groups all the parameters that modify the behavior of the request, like the timeout, library
@@ -231,9 +233,10 @@ public:
      * @param postRequestParameters Parameters that define the behavior after the request is made.
      * @param configurationParameters Parameters to configure the behavior of the request.
      */
-    virtual void download(RequestParameters requestParameters,
-                          PostRequestParameters postRequestParameters,
-                          ConfigurationParameters configurationParameters) = 0;
+    virtual void
+    download(std::variant<TRequestParameters<std::string>, TRequestParameters<nlohmann::json>> requestParameters,
+             PostRequestParameters postRequestParameters,
+             ConfigurationParameters configurationParameters) = 0;
 
     /**
      * @brief Virtual method to send a POST request to a URL.
@@ -242,9 +245,10 @@ public:
      * @param postRequestParameters Parameters that define the behavior after the request is made.
      * @param configurationParameters Parameters to configure the behavior of the request.
      */
-    virtual void post(RequestParameters requestParameters,
-                      PostRequestParameters postRequestParameters,
-                      ConfigurationParameters configurationParameters) = 0;
+    virtual void
+    post(std::variant<TRequestParameters<std::string>, TRequestParameters<nlohmann::json>> requestParameters,
+         PostRequestParameters postRequestParameters,
+         ConfigurationParameters configurationParameters) = 0;
 
     /**
      * @brief Virtual method to send a GET request to a URL.
@@ -253,9 +257,10 @@ public:
      * @param postRequestParameters Parameters that define the behavior after the request is made.
      * @param configurationParameters Parameters to configure the behavior of the request..
      */
-    virtual void get(RequestParameters requestParameters,
-                     PostRequestParameters postRequestParameters,
-                     ConfigurationParameters configurationParameters) = 0;
+    virtual void
+    get(std::variant<TRequestParameters<std::string>, TRequestParameters<nlohmann::json>> requestParameters,
+        PostRequestParameters postRequestParameters,
+        ConfigurationParameters configurationParameters) = 0;
 
     /**
      * @brief Virtual method to send a UPDATE request to a URL.
@@ -264,9 +269,10 @@ public:
      * @param postRequestParameters Parameters that define the behavior after the request is made.
      * @param configurationParameters Parameters to configure the behavior of the request.
      */
-    virtual void put(RequestParameters requestParameters,
-                     PostRequestParameters postRequestParameters,
-                     ConfigurationParameters configurationParameters) = 0;
+    virtual void
+    put(std::variant<TRequestParameters<std::string>, TRequestParameters<nlohmann::json>> requestParameters,
+        PostRequestParameters postRequestParameters,
+        ConfigurationParameters configurationParameters) = 0;
 
     /**
      * @brief Virtual method to send a PATCH request to a URL.
@@ -275,9 +281,10 @@ public:
      * @param postRequestParameters Parameters that define the behavior after the request is made.
      * @param configurationParameters Parameters to configure the behavior of the request.
      */
-    virtual void patch(RequestParameters requestParameters,
-                       PostRequestParameters postRequestParameters,
-                       ConfigurationParameters configurationParameters) = 0;
+    virtual void
+    patch(std::variant<TRequestParameters<std::string>, TRequestParameters<nlohmann::json>> requestParameters,
+          PostRequestParameters postRequestParameters,
+          ConfigurationParameters configurationParameters) = 0;
 
     /**
      * @brief Virtual method to send a DELETE request to a URL.
@@ -286,9 +293,10 @@ public:
      * @param postRequestParameters Parameters that define the behavior after the request is made.
      * @param configurationParameters Parameters to configure the behavior of the request.
      */
-    virtual void delete_(RequestParameters requestParameters,
-                         PostRequestParameters postRequestParameters,
-                         ConfigurationParameters configurationParameters) = 0;
+    virtual void
+    delete_(std::variant<TRequestParameters<std::string>, TRequestParameters<nlohmann::json>> requestParameters,
+            PostRequestParameters postRequestParameters,
+            ConfigurationParameters configurationParameters) = 0;
 };
 
 #endif // _URL_REQUEST_HPP
