@@ -124,9 +124,10 @@ public:
 };
 
 /**
- * @struct RequestParameters
+ * @struct TRequestParameters
  * @brief The structure groups all the parameters required for the request, like the URL, the data to be sent, the
  * headers, etc. They can be thought of as "what" to do.
+ * @tparam T Type of the data to be sent, could be a string(default) or a nlohmann::json.
  */
 template<typename T = std::string>
 struct TRequestParameters

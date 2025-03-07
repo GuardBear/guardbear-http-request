@@ -387,38 +387,15 @@ void UNIXSocketRequest::delete_(
         std::visit(
             [&](auto&& arg)
             {
-                using T = std::decay_t<decltype(arg)>;
-                if constexpr (std::is_same_v<T, TRequestParameters<std::string>>)
-                {
-                    auto req {
-                        DeleteRequest::builder(FactoryRequestWrapper<wrapperType>::create(handlerType, shouldRun))};
-                    req.url(arg.url.url(), arg.secureCommunication)
-                        .unixSocketPath(arg.url.unixSocketPath())
-                        .timeout(timeout)
-                        .userAgent(userAgent)
-                        .outputFile(outputFile)
-                        .execute();
+                auto req {DeleteRequest::builder(FactoryRequestWrapper<wrapperType>::create(handlerType, shouldRun))};
+                req.url(arg.url.url(), arg.secureCommunication)
+                    .unixSocketPath(arg.url.unixSocketPath())
+                    .timeout(timeout)
+                    .userAgent(userAgent)
+                    .outputFile(outputFile)
+                    .execute();
 
-                    onSuccess(req.response());
-                }
-                else if constexpr (std::is_same_v<T, TRequestParameters<nlohmann::json>>)
-                {
-                    const auto data = arg.data.dump();
-                    auto req {
-                        DeleteRequest::builder(FactoryRequestWrapper<wrapperType>::create(handlerType, shouldRun))};
-                    req.url(arg.url.url(), arg.secureCommunication)
-                        .unixSocketPath(arg.url.unixSocketPath())
-                        .timeout(timeout)
-                        .userAgent(userAgent)
-                        .outputFile(outputFile)
-                        .execute();
-
-                    onSuccess(req.response());
-                }
-                else
-                {
-                    throw std::runtime_error("Invalid type");
-                }
+                onSuccess(req.response());
             },
             requestParameters);
     }
