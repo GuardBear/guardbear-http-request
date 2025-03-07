@@ -100,7 +100,7 @@ static void BM_Post(benchmark::State& state)
     for (auto _ : state)
     {
         HTTPRequest::instance().post(
-            RequestParameters {.url = HttpURL("http://localhost:44441/"), .data = R"({"foo": "bar"})"_json});
+            RequestParametersJson {.url = HttpURL("http://localhost:44441/"), .data = R"({"foo": "bar"})"_json});
     }
 }
 BENCHMARK(BM_Post);
@@ -115,7 +115,7 @@ static void BM_Update(benchmark::State& state)
     for (auto _ : state)
     {
         HTTPRequest::instance().put(
-            RequestParameters {.url = HttpURL("http://localhost:44441/"), .data = R"({"foo": "bar"})"_json});
+            RequestParametersJson {.url = HttpURL("http://localhost:44441/"), .data = R"({"foo": "bar"})"_json});
     }
 }
 BENCHMARK(BM_Update);
@@ -130,7 +130,7 @@ static void BM_Patch(benchmark::State& state)
     for (auto _ : state)
     {
         HTTPRequest::instance().patch(
-            RequestParameters {.url = HttpURL("http://localhost:44441/"), .data = R"({"foo": "bar"})"_json});
+            RequestParametersJson {.url = HttpURL("http://localhost:44441/"), .data = R"({"foo": "bar"})"_json});
     }
 }
 BENCHMARK(BM_Patch);

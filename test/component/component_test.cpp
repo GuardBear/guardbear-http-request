@@ -39,6 +39,33 @@ void checkFileContent(const std::string& file, const std::string& expectedConten
     ASSERT_STREQ(line.c_str(), expectedContent.c_str());
 }
 
+uint64_t getMemoryUsedByTheCurrentProcess()
+{
+    std::string token;
+    std::map<std::string, uint64_t> memoryInfo;
+    std::ifstream fileStream("/proc/self/status");
+    while (fileStream >> token)
+    {
+        if (token == "VmRSS:")
+        {
+            uint64_t memory;
+            if (fileStream >> memory)
+            {
+                memoryInfo["VmRSS"] = memory;
+            }
+        }
+        else if (token == "VmHWM:")
+        {
+            uint64_t memory;
+            if (fileStream >> memory)
+            {
+                memoryInfo["VmHWM"] = memory;
+            }
+        }
+    }
+    return memoryInfo["VmRSS"];
+}
+
 void checkEmptyFile(const std::string& file)
 {
     if (!std::filesystem::exists(file))
@@ -97,7 +124,7 @@ TEST_F(ComponentTestInterface, GetHelloWorldRedirection)
 TEST_F(ComponentTestInterface, PostHelloWorld)
 {
     HTTPRequest::instance().post(
-        RequestParameters {.url = HttpURL("http://localhost:44441/"), .data = R"({"hello":"world"})"_json},
+        RequestParametersJson {.url = HttpURL("http://localhost:44441/"), .data = R"({"hello":"world"})"_json},
         PostRequestParameters {.onSuccess = [&](const std::string& result)
                                {
                                    EXPECT_EQ(result, R"({"hello":"world"})");
@@ -113,7 +140,7 @@ TEST_F(ComponentTestInterface, PostHelloWorld)
 TEST_F(ComponentTestInterface, PutHelloWorld)
 {
     HTTPRequest::instance().put(
-        RequestParameters {.url = HttpURL("http://localhost:44441/"), .data = R"({"hello":"world"})"_json},
+        RequestParametersJson {.url = HttpURL("http://localhost:44441/"), .data = R"({"hello":"world"})"_json},
         PostRequestParameters {.onSuccess = [&](const std::string& result)
                                {
                                    EXPECT_EQ(result, R"({"hello":"world"})");
@@ -372,6 +399,17 @@ TEST_F(ComponentTestInterface, GetHelloWorldFile)
 }
 
 /**
+ * @brief Test the get request and check the file content.
+ */
+TEST_F(ComponentTestInterface, GetHelloWorldFileJson)
+{
+    HTTPRequest::instance().get(RequestParametersJson {.url = HttpURL("http://localhost:44441/")},
+                                PostRequestParameters {.outputFile = TEST_FILE_1});
+
+    checkFileContent(TEST_FILE_1, "Hello World!");
+}
+
+/**
  * @brief Test the get request with empty URL.
  */
 TEST_F(ComponentTestInterface, GetHelloWorldFileEmptyURL)
@@ -398,11 +436,24 @@ TEST_F(ComponentTestInterface, GetHelloWorldFileEmptyURL)
 TEST_F(ComponentTestInterface, PostHelloWorldFile)
 {
     HTTPRequest::instance().post(
-        RequestParameters {.url = HttpURL("http://localhost:44441/"), .data = R"({"hello":"world"})"_json},
+        RequestParametersJson {.url = HttpURL("http://localhost:44441/"), .data = R"({"hello":"world"})"_json},
         PostRequestParameters {.onSuccess = [&](const std::string& result) { std::cout << result << std::endl; },
                                .outputFile = TEST_FILE_1});
 
     checkFileContent(TEST_FILE_1, R"({"hello":"world"})");
+}
+
+/**
+ * @brief Test the post request and check the file content.
+ */
+TEST_F(ComponentTestInterface, PostHelloWorldFileRaw)
+{
+    HTTPRequest::instance().post(
+        RequestParameters {.url = HttpURL("http://localhost:44441/"), .data = "hello world"},
+        PostRequestParameters {.onSuccess = [&](const std::string& result) { std::cout << result << std::endl; },
+                               .outputFile = TEST_FILE_1});
+
+    checkFileContent(TEST_FILE_1, "hello world");
 }
 
 /**
@@ -411,7 +462,7 @@ TEST_F(ComponentTestInterface, PostHelloWorldFile)
 TEST_F(ComponentTestInterface, PostHelloWorldFileEmptyURL)
 {
     HTTPRequest::instance().post(
-        RequestParameters {.url = HttpURL(""), .data = R"({"hello":"world"})"_json},
+        RequestParametersJson {.url = HttpURL(""), .data = R"({"hello":"world"})"_json},
         PostRequestParameters {.onSuccess = [&](const std::string& result) { std::cout << result << std::endl; },
                                .onError =
                                    [&](const std::string& result, const long responseCode)
@@ -433,7 +484,7 @@ TEST_F(ComponentTestInterface, PostHelloWorldFileEmptyURL)
 TEST_F(ComponentTestInterface, PutHelloWorldFile)
 {
     HTTPRequest::instance().put(
-        RequestParameters {.url = HttpURL("http://localhost:44441/"), .data = R"({"hello":"world"})"_json},
+        RequestParametersJson {.url = HttpURL("http://localhost:44441/"), .data = R"({"hello":"world"})"_json},
         PostRequestParameters {.onSuccess = [&](const std::string& result) { std::cout << result << std::endl; },
                                .outputFile = TEST_FILE_1});
 
@@ -443,10 +494,23 @@ TEST_F(ComponentTestInterface, PutHelloWorldFile)
 /**
  * @brief Test the update request and check the file content.
  */
+TEST_F(ComponentTestInterface, PutHelloWorldFileRaw)
+{
+    HTTPRequest::instance().put(
+        RequestParameters {.url = HttpURL("http://localhost:44441/"), .data = "hello world"},
+        PostRequestParameters {.onSuccess = [&](const std::string& result) { std::cout << result << std::endl; },
+                               .outputFile = TEST_FILE_1});
+
+    checkFileContent(TEST_FILE_1, "hello world");
+}
+
+/**
+ * @brief Test the update request and check the file content.
+ */
 TEST_F(ComponentTestInterface, PutHelloWorldFileEmptyURL)
 {
     HTTPRequest::instance().put(
-        RequestParameters {.url = HttpURL(""), .data = R"({"hello":"world"})"_json},
+        RequestParametersJson {.url = HttpURL(""), .data = R"({"hello":"world"})"_json},
         PostRequestParameters {.onSuccess = [&](const std::string& result) { std::cout << result << std::endl; },
                                .onError =
                                    [&](const std::string& result, const long responseCode)
@@ -872,7 +936,7 @@ TEST_F(ComponentTestInterface, PatchSimpleFunctionality)
     )"_json;
     expectedResponse["payload"] = postData;
 
-    HTTPRequest::instance().patch(RequestParameters {.url = HttpURL("http://localhost:44441/"), .data = postData},
+    HTTPRequest::instance().patch(RequestParametersJson {.url = HttpURL("http://localhost:44441/"), .data = postData},
                                   PostRequestParameters {.onSuccess = [&](const std::string& result)
                                                          {
                                                              EXPECT_EQ(nlohmann::json::parse(result), expectedResponse);
@@ -905,15 +969,16 @@ TEST_F(ComponentTestInterface, PostWithCustomUserAgent)
     const std::string headerKey {"User-Agent"};
     const std::string userAgentValue {"Custom-User-Agent"};
 
-    HTTPRequest::instance().post(
-        RequestParameters {.url = HttpURL("http://localhost:44441/check-headers"), .data = R"({"hello":"world"})"_json},
-        PostRequestParameters {.onSuccess =
-                                   [&](const std::string& result)
-                               {
-                                   ASSERT_EQ(nlohmann::json::parse(result).at(headerKey), userAgentValue);
-                                   m_callbackComplete = true;
-                               }},
-        ConfigurationParameters {.userAgent = userAgentValue});
+    HTTPRequest::instance().post(RequestParametersJson {.url = HttpURL("http://localhost:44441/check-headers"),
+                                                        .data = R"({"hello":"world"})"_json},
+                                 PostRequestParameters {.onSuccess =
+                                                            [&](const std::string& result)
+                                                        {
+                                                            ASSERT_EQ(nlohmann::json::parse(result).at(headerKey),
+                                                                      userAgentValue);
+                                                            m_callbackComplete = true;
+                                                        }},
+                                 ConfigurationParameters {.userAgent = userAgentValue});
 
     EXPECT_TRUE(m_callbackComplete);
 }
@@ -949,15 +1014,16 @@ TEST_F(ComponentTestInterface, PutWithCustomUserAgent)
     const std::string headerKey {"User-Agent"};
     const std::string userAgentValue {"Custom-User-Agent"};
 
-    HTTPRequest::instance().put(
-        RequestParameters {.url = HttpURL("http://localhost:44441/check-headers"), .data = R"({"hello":"world"})"_json},
-        PostRequestParameters {.onSuccess =
-                                   [&](const std::string& result)
-                               {
-                                   ASSERT_EQ(nlohmann::json::parse(result).at(headerKey), userAgentValue);
-                                   m_callbackComplete = true;
-                               }},
-        ConfigurationParameters {.userAgent = userAgentValue});
+    HTTPRequest::instance().put(RequestParametersJson {.url = HttpURL("http://localhost:44441/check-headers"),
+                                                       .data = R"({"hello":"world"})"_json},
+                                PostRequestParameters {.onSuccess =
+                                                           [&](const std::string& result)
+                                                       {
+                                                           ASSERT_EQ(nlohmann::json::parse(result).at(headerKey),
+                                                                     userAgentValue);
+                                                           m_callbackComplete = true;
+                                                       }},
+                                ConfigurationParameters {.userAgent = userAgentValue});
 
     EXPECT_TRUE(m_callbackComplete);
 }
@@ -971,15 +1037,16 @@ TEST_F(ComponentTestInterface, PatchWithCustomUserAgent)
     const std::string headerKey {"User-Agent"};
     const std::string userAgentValue {"Custom-User-Agent"};
 
-    HTTPRequest::instance().patch(
-        RequestParameters {.url = HttpURL("http://localhost:44441/check-headers"), .data = R"({"hello":"world"})"_json},
-        PostRequestParameters {.onSuccess =
-                                   [&](const std::string& result)
-                               {
-                                   ASSERT_EQ(nlohmann::json::parse(result).at(headerKey), userAgentValue);
-                                   m_callbackComplete = true;
-                               }},
-        ConfigurationParameters {.userAgent = userAgentValue});
+    HTTPRequest::instance().patch(RequestParametersJson {.url = HttpURL("http://localhost:44441/check-headers"),
+                                                         .data = R"({"hello":"world"})"_json},
+                                  PostRequestParameters {.onSuccess =
+                                                             [&](const std::string& result)
+                                                         {
+                                                             ASSERT_EQ(nlohmann::json::parse(result).at(headerKey),
+                                                                       userAgentValue);
+                                                             m_callbackComplete = true;
+                                                         }},
+                                  ConfigurationParameters {.userAgent = userAgentValue});
 
     EXPECT_TRUE(m_callbackComplete);
 }
@@ -1161,7 +1228,7 @@ TEST_F(ComponentTestInterface, PutTestTimeoutSingleHandler)
 {
     try
     {
-        HTTPRequest::instance().put(RequestParameters {.url = HttpURL(TEST_NET_IP), .data = "{}"_json},
+        HTTPRequest::instance().put(RequestParametersJson {.url = HttpURL(TEST_NET_IP), .data = "{}"_json},
                                     PostRequestParameters {},
                                     ConfigurationParameters {.timeout = 10});
         FAIL() << "Expected exception, but no exception was thrown.";
@@ -1174,7 +1241,7 @@ TEST_F(ComponentTestInterface, PutTestTimeoutSingleHandler)
 
     EXPECT_NO_THROW({
         HTTPRequest::instance().put(
-            RequestParameters {.url = HttpURL(TEST_NET_IP), .data = "{}"_json},
+            RequestParametersJson {.url = HttpURL(TEST_NET_IP), .data = "{}"_json},
             PostRequestParameters {.onError =
                                        [&](const std::string& result, const long _)
                                    {
@@ -1194,7 +1261,7 @@ TEST_F(ComponentTestInterface, PutTestTimeoutMultiHandler)
 {
     try
     {
-        HTTPRequest::instance().put(RequestParameters {.url = HttpURL(TEST_NET_IP), .data = "{}"_json},
+        HTTPRequest::instance().put(RequestParametersJson {.url = HttpURL(TEST_NET_IP), .data = "{}"_json},
                                     PostRequestParameters {},
                                     ConfigurationParameters {.timeout = 10,
                                                              .handlerType = CurlHandlerTypeEnum::MULTI,
@@ -1209,7 +1276,7 @@ TEST_F(ComponentTestInterface, PutTestTimeoutMultiHandler)
 
     EXPECT_NO_THROW({
         HTTPRequest::instance().put(
-            RequestParameters {.url = HttpURL(TEST_NET_IP), .data = "{}"_json},
+            RequestParametersJson {.url = HttpURL(TEST_NET_IP), .data = "{}"_json},
             PostRequestParameters {.onError =
                                        [&](const std::string& result, const long _)
                                    {
@@ -1230,7 +1297,7 @@ TEST_F(ComponentTestInterface, PatchTestTimeoutSingleHandler)
 {
     try
     {
-        HTTPRequest::instance().patch(RequestParameters {.url = HttpURL(TEST_NET_IP), .data = "{}"_json},
+        HTTPRequest::instance().patch(RequestParametersJson {.url = HttpURL(TEST_NET_IP), .data = "{}"_json},
                                       PostRequestParameters {},
                                       ConfigurationParameters {.timeout = 10});
         FAIL() << "Expected exception, but no exception was thrown.";
@@ -1243,7 +1310,7 @@ TEST_F(ComponentTestInterface, PatchTestTimeoutSingleHandler)
 
     EXPECT_NO_THROW({
         HTTPRequest::instance().patch(
-            RequestParameters {.url = HttpURL(TEST_NET_IP), .data = "{}"_json},
+            RequestParametersJson {.url = HttpURL(TEST_NET_IP), .data = "{}"_json},
             PostRequestParameters {.onError =
                                        [&](const std::string& result, const long _)
                                    {
@@ -1263,7 +1330,7 @@ TEST_F(ComponentTestInterface, PatchTestTimeoutMultiHandler)
 {
     try
     {
-        HTTPRequest::instance().patch(RequestParameters {.url = HttpURL(TEST_NET_IP), .data = "{}"_json},
+        HTTPRequest::instance().patch(RequestParametersJson {.url = HttpURL(TEST_NET_IP), .data = "{}"_json},
                                       PostRequestParameters {},
                                       ConfigurationParameters {.timeout = 10,
                                                                .handlerType = CurlHandlerTypeEnum::MULTI,
@@ -1278,7 +1345,7 @@ TEST_F(ComponentTestInterface, PatchTestTimeoutMultiHandler)
 
     EXPECT_NO_THROW({
         HTTPRequest::instance().patch(
-            RequestParameters {.url = HttpURL(TEST_NET_IP), .data = "{}"_json},
+            RequestParametersJson {.url = HttpURL(TEST_NET_IP), .data = "{}"_json},
             PostRequestParameters {.onError =
                                        [&](const std::string& result, const long _)
                                    {
@@ -1368,7 +1435,7 @@ TEST_F(ComponentTestInterface, PostTestTimeoutSingleHandler)
 {
     try
     {
-        HTTPRequest::instance().post(RequestParameters {.url = HttpURL(TEST_NET_IP), .data = "{}"_json},
+        HTTPRequest::instance().post(RequestParametersJson {.url = HttpURL(TEST_NET_IP), .data = "{}"_json},
                                      PostRequestParameters {},
                                      ConfigurationParameters {.timeout = 10});
         FAIL() << "Expected exception, but no exception was thrown.";
@@ -1381,7 +1448,7 @@ TEST_F(ComponentTestInterface, PostTestTimeoutSingleHandler)
 
     EXPECT_NO_THROW({
         HTTPRequest::instance().post(
-            RequestParameters {.url = HttpURL(TEST_NET_IP), .data = "{}"_json},
+            RequestParametersJson {.url = HttpURL(TEST_NET_IP), .data = "{}"_json},
             PostRequestParameters {.onError =
                                        [&](const std::string& result, const long _)
                                    {
@@ -1401,7 +1468,7 @@ TEST_F(ComponentTestInterface, PostTestTimeoutMultiHandler)
 {
     try
     {
-        HTTPRequest::instance().post(RequestParameters {.url = HttpURL(TEST_NET_IP), .data = "{}"_json},
+        HTTPRequest::instance().post(RequestParametersJson {.url = HttpURL(TEST_NET_IP), .data = "{}"_json},
                                      PostRequestParameters {},
                                      ConfigurationParameters {.timeout = 10,
                                                               .handlerType = CurlHandlerTypeEnum::MULTI,
@@ -1416,7 +1483,7 @@ TEST_F(ComponentTestInterface, PostTestTimeoutMultiHandler)
 
     EXPECT_NO_THROW({
         HTTPRequest::instance().post(
-            RequestParameters {.url = HttpURL(TEST_NET_IP), .data = "{}"_json},
+            RequestParametersJson {.url = HttpURL(TEST_NET_IP), .data = "{}"_json},
             PostRequestParameters {.onError =
                                        [&](const std::string& result, const long _)
                                    {
@@ -1427,4 +1494,25 @@ TEST_F(ComponentTestInterface, PostTestTimeoutMultiHandler)
                 .timeout = 10, .handlerType = CurlHandlerTypeEnum::MULTI, .shouldRun = m_shouldRun});
     });
     EXPECT_TRUE(m_callbackComplete);
+}
+
+/**
+ * @brief Test 100MBs post footprint
+ */
+TEST_F(ComponentTestInterface, Post100Mbs)
+{
+    constexpr uint64_t TEST_SIZE = {100 * 1024 * 1024};
+    // Simulate a server RSS usage of 3 times the size of the data
+    constexpr uint64_t SERVER_RSS_USAGE = {(TEST_SIZE * 3) / 1024};
+    const auto data = std::string(TEST_SIZE, 'a');
+    const auto prePost = getMemoryUsedByTheCurrentProcess();
+
+    HTTPRequest::instance().post(RequestParameters {.url = HttpURL("http://localhost:44441/"), .data = data},
+                                 PostRequestParameters {.onSuccess = [&](const std::string& result)
+                                                        {
+                                                            m_callbackComplete = true;
+                                                        }});
+    const auto postPost = getMemoryUsedByTheCurrentProcess();
+
+    EXPECT_LE(postPost, prePost + SERVER_RSS_USAGE);
 }
