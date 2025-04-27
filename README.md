@@ -14,7 +14,7 @@ git clone https://github.com/microsoft/vcpkg.git
 cd vcpkg && ./bootstrap-vcpkg.sh
 export VCPKG_ROOT=$(pwd)
 export PATH=$VCPKG_ROOT:$PATH
-cd ../wazuh-http-request
+cd ../guardbear-http-request
 cmake --preset=debug
 cmake --build build -j$(nproc)
 ```
@@ -25,7 +25,7 @@ Please see the CMake documentation and CMakeLists.txt for more advanced usage.
 
 ### CPP Migration tools
 
-1. **Coding Style** This project follow the Wazuh C++ Coding Style [Wazuh C++ style guide](https://github.com/wazuh/wazuh/wiki/Coding-style-guide-%28C-plus-plus%29)
+1. **Coding Style** This project follow the GuardBear C++ Coding Style [GuardBear C++ style guide](https://github.com/guardbear/guardbear/wiki/Coding-style-guide-%28C-plus-plus%29)
 
 2. **Tests** All changes must be accompanied by a new (or changed) tests. Unit, component and benchmarking.
 
@@ -38,7 +38,7 @@ Please see the CMake documentation and CMakeLists.txt for more advanced usage.
 Apart from the markdown that we can find in the readme of the project subfolders, the code has doxygen headers, which generate technical documentation that gives some context of what the call tree is like, and what parameters and returns they have.
 
 ```bash
-root@wazuh-dev:~/repos/wazuh-http-request# doxygen doxygen.cfg
+root@guardbear-dev:~/repos/guardbear-http-request# doxygen doxygen.cfg
 ```
 
 After executing this command, open the index.html file that is generated in the `doc/html` folder, to view this technical and implementation documentation.

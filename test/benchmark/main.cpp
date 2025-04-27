@@ -1,6 +1,6 @@
 /*
- * Wazuh urlRequest test component
- * Copyright (C) 2015, Wazuh Inc.
+ * GuardBear urlRequest test component
+ * Copyright (C) 2015, GuardBear Inc.
  * July 20, 2022.
  *
  * This program is free software; you can redistribute it

@@ -1,6 +1,6 @@
 /*
- * Wazuh http request
- * Copyright (C) 2015, Wazuh Inc.
+ * GuardBear http request
+ * Copyright (C) 2015, GuardBear Inc.
  * July 10, 2023.
  *
  * This program is free software; you can redistribute it
